@@ -1,0 +1,371 @@
+---
+title: "Exploring_Hurricane_Data_2"
+output: 
+  html_document:
+    toc: true
+---
+
+-----
+# Let's explore some hurricane data!
+
+Individual name: 
+
+Team name:
+
+-----
+In exploratory data analysis, some of the first steps are to understand what the data is representing.  One way to do this is to examine sub-sections of the data by visualizing it in different ways.  We'll start by examining sub-sections of the hurricane data by year.  
+
+Before we begin, re-load the libraries `"dplyr"` and `"ggplot2"`.
+
+```{r}
+library(dplyr)
+library(ggplot2)
+```
+
+
+## Basic inspection of storms in 1975
+
+Let's focus on those storms recorded in 1975. How do we select them? Computationally, this operation involves a logical condition: `year == 1975`. This condition means that, from all the available year values, we get those that match 1975. This is done via `"dplyr"` function `filter()`
+
+```{r fig.cap='Extracting a column with dplyr functions "pull" and "select"', echo = FALSE, out.width='65%'}
+knitr::include_graphics("https://www.gastonsanchez.com/intro2cwd/images/eda/dplyr-filter.svg")
+```
+
+First, let's create a subset `storms75` by _filtering_ those rows with `year`
+equal to 1975:
+
+
+```{r}
+storms75 <- filter(storms, year == 1975)
+storms75
+```
+
+
+Now we have the set of storms that occurred in 1975.  We can see that there were hurricanes Amy, Caroline, and Doris (we see you, different flavors of misogyny and racism in historical hurricane name choice).  However it's not obvious from the output if those three hurricanes were all of that year.  Are we missing a B name?  Let's find out what were the different hurricanes from that year.  In R, we could ask what `unique()` storms happened in that year like this:
+
+
+```{r}
+unique(pull(storms75, name))
+```
+
+
+From the returned output, we see that there is no missing B name hurricane, it's just the three unique storms recorded in 1975.
+
+A similar result can be obtained with `distinct()`, the difference being the
+way in which the output is returned, in this case under the format of a tibble:
+
+
+```{r}
+distinct(storms75, name)
+```
+
+
+Now that we know there are three storms for 1975, we might be curious to know how many rows (or records) are included for each of the storms. `"dplyr"` allows us to count the number of rows with a particular name value with `count()`, passing the name of the table, and then the name of the column for which we want to get the counts or frequencies:
+
+
+```{r}
+count(storms75, name)
+```
+
+
+### Assignment
+
+1. Choose a year between 1975 and 2015 that means something to your team.  
+
+2. What hurricanes occured in your year of choice?  
+
+```{r}
+
+```
+### Visual displays on 1975 storms
+
+Let's play a bit with those storms from 1975. More specifically, let's visually 
+explore the values of columns `wind` and `pressure`.  First, just look at the kinds of values we see for `wind` and `pressure` and think about what type of variables they hold.    
+
+
+```{r}
+head(storms75,20)
+str(storms75)
+```
+
+### Assignment
+
+3. What type of variable is `wind`?  (ex: logical, string, numeric)
+
+```{r}
+
+```
+
+Given that, two ways to start to explore the values of `wind` through vizualization are to graph it with either a histogram or a boxplot.  Those are statistical charts to visualize the distribution (all the different values of) of quantitative variables.
+
+So let's use `geom_histogram()` and see what we get. We are going to show you a synatx of `ggplot()` slightly different from the one we used for the barcharts. Carefully review the following code:
+
+
+```{r}
+p1=ggplot(data = storms75, aes(x = wind)) +
+  geom_histogram()
+```
+
+
+```{r}
+#Same result
+p2=ggplot(data = storms75) +
+  geom_histogram(aes(x = wind))
+p2
+```
+
+You should notice now that `aes()` is an argument of `ggplot()`, and not anymore 
+an argument of the geometric-object function `geom_histogram()`. While this 
+may be a bit confusing when learning about `"ggplot2"`, it is a very flexible
+and powerful behavior of `aes()`. Again, the important part of `aes()` is to
+understand that this function allows you to tell `ggplot()` which variables
+in your `data` table are used as visual attributes of the corresponding 
+geometric elements forming the plot.
+
+We can change the default argument `binwidth` to get another version of the 
+histogram, for example a bin-width of 5 units (i.e. since `wind` is measured in knots, a bin width of 5 knots):
+
+
+```{r}
+ggplot(data = storms75, aes(x = wind)) +
+  geom_histogram(binwidth = 5)
+```
+
+
+or a bin-width of 10:
+
+
+```{r}
+ggplot(data = storms75, aes(x = wind)) +
+  geom_histogram(binwidth = 10)
+```
+
+### Assignment
+4. Now, let's reflect on what's going on in each of the histograms.  What features about wind speed do you notice with these histograms?  (no right or wrong answers, just explain your thinking)
+
+5. What's your first guess about why you see those features in the data?  In other words, how do you interpret the figures?  (no right or wrong answers, just explain your thinking)
+
+While `ggplot()` does what we ask it to do, the displays may not be the most 
+useful, or meaningful. Why? Think what exactly it is that we are plotting. 
+In 1975, there are three storms: 
+
+
+```{r}
+unique(pull(storms75, name))
+```
+
+
+But the histograms we've created are not differentiating between any of those three storms.
+Rather, the visualization is just giving us a general view of the `wind` values,
+from the low 20's to the high 90's, or to be more precise:
+
+
+```{r}
+summary(pull(storms75, wind))
+```
+
+
+However, we don't really know if all three storms have the same minimum `wind`
+speed, or the same maximum `wind` speed. The good news is that we can tell
+`ggplot()` to take into account each different storm name. But now let's use
+boxplots via `geom_boxplot()`, mapping `name` to the x-axis, and `wind` to the y-axis.
+
+
+```{r}
+ggplot(data = storms75, aes(x = name, y = wind)) +
+  geom_boxplot()
+```
+
+### Assignment
+6. How do you interpret this plot?
+
+7. How does the new perspective you gained through this plot change (or not) your answer to question 5? (no right or wrong answers, just explain your thinking)
+
+We can get an alternative plot with density curves thanks to the `geom_density()` function. The syntax in this case is different. Let's first do it without separating storms, and then we do it taking into account the storm names.
+
+Here's the command that plots a density curve of wind, without distinguishing between storms. Observe also how the argument `fill` is _set_ to color `'gray'`:
+
+
+```{r}
+ggplot(data = storms75, aes(x = wind)) +
+  geom_density(fill = 'gray')
+```
+
+As you can tell, the density curve looks like the profile of a roller coaster,
+or like the silhouette of three mountain peaks. It's basically a smoothed-out version of the histograms we made earlier.  Is this a pattern followed 
+by wind speed in all storms? Or is it just an artifact due to the fact that we 
+are plotting data without taking into consideration the context of `storms75`?
+
+Let's replot density of wind, but now distinguishing between each storm. We 
+do this by mapping `name` to the `color` argument:
+
+
+```{r}
+ggplot(data = storms75, aes(x = wind, color = name)) +
+  geom_density(aes(fill = name))
+```
+
+Aha! Now things look more interesting: the roller coast shape of the first call 
+to `geom_density()` turned out to be an artificial pattern. As you can tell 
+from the above plot, each storm has its own different density curve.
+
+To get a better visualization, we can take the previous command and add a bit 
+of transparency to the colors, this is done with the argument `alpha` inside 
+`geom_density()`. Note how arguments are specified inside `geom_density()`:
+we __map__ `name` to the color-fill attribute of the curve inside `aes()`, but 
+we __set__ `alpha = 0.5` outside `aes()`:
+
+
+```{r}
+ggplot(data = storms75, aes(x = wind, color = name)) +
+  geom_density(aes(fill = name), alpha = 0.5)
+```
+
+We are going to take advantage of this graphic to introduce another cool 
+feature of `"ggplot2"` that allows us to split data based on categorical or
+discrete variables, in order to produce separated frames called __facets__. 
+Here's the command previous command---wihtout `alpha` transparency---adding a 
+new layer given by `facet_wrap()`:
+
+
+```{r}
+ggplot(data = storms75, aes(x = wind, color = name)) +
+  geom_density(aes(fill = name)) + 
+  facet_wrap(~ name)
+```
+
+In this command we are faceting by `name`, and what this does is to create 
+facets, one for each category of `name`. In other words, we get separated 
+density curves, one for each storm. The syntax inside `facet_wrap()` uses the
+tilde `~` operator which is the _formula_ operator in R. Basically, the command 
+`~ name` tells `ggplot()` to create facets based on the values of `name`.
+
+### Assignment
+8. For your team's year-of-choice from question 1, create a histogram of all hurricane wind speeds.  
+
+9. For your year-of-choice, create a boxplot with the wind speed of each hurricane shown separately. 
+
+10. For your year-of-choice, create a smoothed density plot, distinguishing each storm either by semi-transparent colors, or by different plot facets.  
+
+11. How do you interpret this second year exploration, in comparison to what we saw in 1975?  
+
+```{r}
+
+```
+-----
+
+### Visual Inspection of Storm Amy (1975)
+
+Let's take a deeper dive and focus on storm `Amy` in 1975. We can subset `storms75` to filter out just the rows of Amy into its own table
+
+
+```{r}
+amy75 <- filter(storms75, name == "Amy")
+amy75
+```
+
+
+Let's keep exploring `wind` but now let's do it chronologically, that is, 
+graphing the wind values in the order that they were recorded (recall storms 
+are tracked every six hours). 
+
+We begin with a scatterplot using `geom_point()`.  We specify that the x-axis should use a numeric sequence from one to the number of rows in `amy75` (`1:nrow(amy75)`).  The x-axis represents each sequential time point.  On the y-axis, we plot `wind`:
+
+
+```{r}
+ggplot(data = amy75, aes(x = 1:nrow(amy75), y = wind)) +
+  geom_point()
+```
+
+Hmm, an x-axis titled 1:nrow(amy75) isn't very descriptive to someone who isn't creating this code.  
+
+### Assignment
+12. Add on another layer to the plot with `xlab` to re-label the x-axis more descriptively.  
+
+```{r}
+
+```
+
+Because the x-axis denotes progression over time, viewers can more easily interpret the plot if sequential dots are connected with a line. A simple way to do this is by adding another layer to our plot,
+this time with `geom_line()`
+
+
+```{r}
+ggplot(data = amy75, aes(x = 1:nrow(amy75), y = wind)) +
+  geom_point() + 
+  geom_line()
+```
+
+### Assignment
+13. How fast was `wind` when recording started?  How many hours later did it reach its max speed?  What was that speed?  
+
+```{r}
+#hint
+?storms
+```
+
+At this point, we may be interested in incorporating the other types of data we have about Amy.  Let's consider `status`.  (You can go back and check the original output to understand what `status` may be representing)
+
+One option is to map `status` to the `color` attribute of points:
+
+
+```{r}
+ggplot(data = amy75, aes(x = 1:nrow(amy75), y = wind)) +
+  geom_point(aes(color = status)) + 
+  geom_line()
+```
+
+We see that Amy started as a tropical depression, and then became a tropical
+storm, but never became a hurricane. For a storm to reach hurricane status, of category 1, it must have one-minute maximum sustained winds of at least  64 kn
+(33 m/s; 74 mph; 119 km/h).
+
+What about the pressure values of Amy? We can produce a similar scatterplot 
+with a line connecting the dots:
+
+
+```{r}
+ggplot(data = amy75, aes(x = 1:nrow(amy75), y = pressure)) +
+  geom_point(aes(color = status)) + 
+  geom_line()
+```
+
+As an exploratory exercise, we can also try representing more aspects of the data together by playing with the size of points, the size (width) of lines, colors, etc. Here's one suggestion graphing `pressure` and taking into account the `wind` speed reflected in the size of points and line segments:
+
+
+```{r}
+ggplot(data = amy75, aes(x = 1:nrow(amy75), y = pressure)) +
+  geom_line(aes(size = wind), lineend = "round", color = 'gray70') +
+  geom_point(aes(size = wind, color = status))
+```
+
+If you know a little bit about storms, you know there's actually an association 
+between `wind` and `pressure`. But let's pretend for a second that we don't 
+know much about tropical storms, hurricanes, and things like that (Rori doesn't have to pretend). By looking
+at the previous chart, this should allows us to guess that something is going 
+on between the `pressure` of a storm and its `wind` speed. As Amy becomes 
+stronger, with higher winds, its pressure levels drop accordingly.
+
+-----
+
+### Assignment
+
+14. Try to find out how to specify a logical condition to filter for all team members' birth years.
+
+15. Try to find out how to specify a logical condition to filter storms from the team's year-of-choice with `wind` values less than 100.
+
+16. Use `"dplyr"` functions/commands to create a table (e.g. tibble) `storm_names_2000s` containing the name and year of storms recorded during the 2000s (i.e. from 2000 to 2009).
+
+17. Create boxplots of pressure, for storms in the team's year-of-choice. You can also try graphing _violins_ (`geom_violin()`) instead of boxplots (`geom_boxplot()`).
+
+18. Use `"ggplot2"` functions to make a single scatterplot of `wind` and `pressure` for all storms. Use `category` to add color to the dots.
+
+19. Use `"ggplot2"` functions to make a scatterplot of `wind` and `pressure` for all storms, facetting by month, and using `category` to differentiate by color.
+
+
+```{r}
+
+
+```
+
+
+  

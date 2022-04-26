@@ -1,0 +1,233 @@
+---
+title: "EDSS Lab assignment: Exploring datasets"
+author: "Abhi Wagh"
+date: "04/11/22"
+output: html_document
+editor_options: 
+  chunk_output_type: inline
+---
+
+
+```{r}
+#reading raw data from CDC Pulse Survey for Mental Health during COVID (2 weeks in Dec 2020 and 2021)
+twenty_data <- read.csv("health4_se_week21_dec9to21_2020.xlsx - US.csv")
+twentyone_data <- read.csv("health4_week40_dec1to13_2021.xlsx - US.csv")
+
+twenty_data
+twentyone_data
+
+#this data is not tidy, so we are extracting data columns/rows of interest and cleaning it up below
+```
+
+```{r}
+#removing unnecessary data rows from dataset and isolating just the income data
+
+income_mental_health_2020 <- twenty_data[-c(1:54, 64:74), ]
+income_mental_health_2021 <- twentyone_data[-c(1:73, 83:129), ]
+
+income_mental_health_2020
+income_mental_health_2021
+```
+
+```{r}
+#removing unnecessary data columns from dataset and isolating just the income data
+
+total_income_mental_health_2020 <- subset(income_mental_health_2020, select = -c(X:X.3, X.7:X.9))
+total_income_mental_health_2021 <- subset(income_mental_health_2021, select = -c(X:X.3, X.7:X.9))
+
+total_income_mental_health_2020
+total_income_mental_health_2021
+
+#renaming columns and merging datasets
+
+names(total_income_mental_health_2020)[names(total_income_mental_health_2020) == 'Standard.Error.Health.Table.4..Mental.Health.Activities.in.the.Last.4.Weeks..by.Select.Characteristics..United.States'] <- 'income'
+
+names(total_income_mental_health_2020)
+
+names(total_income_mental_health_2021)[names(total_income_mental_health_2021) == 'Health.Table.4..Mental.Health.Activities.in.the.Last.4.Weeks..by.Select.Characteristics..United.States'] <- 'income'
+
+names(total_income_mental_health_2021)
+
+merged_data <- merge(total_income_mental_health_2020,total_income_mental_health_2021, by= "income")
+merged_data
+
+#renaming columns for clarity
+
+names(merged_data)[names(merged_data) == 'X.4.x'] <- 'Need Counseling Not Get 20'
+names(merged_data)[names(merged_data) == 'X.5.x'] <- 'Did Not Need Not Get 20'
+names(merged_data)[names(merged_data) == 'X.6.x'] <- 'Did Not Report 20'
+
+names(total_income_mental_health_2020)
+
+names(merged_data)[names(merged_data) == 'X.4.y'] <- 'Need Counseling Not Get 21'
+names(merged_data)[names(merged_data) == 'X.5.y'] <- 'Did Not Need Not Get 21'
+names (merged_data)[names(merged_data) == 'X.6.y'] <- 'Did Not Report 21'
+
+names(merged_data)
+
+merged_data
+
+```
+
+```{r}
+#loading additional libraries
+library(ggplot2)
+library(tidyverse)
+library(forcats)
+require(tidyr)
+
+#made a new .csv with correct order of income ranges and associated data rows and read it in
+new_data_merged <- read.csv("NEW_DATASET_COVID_MENTALHEALTH2020-2021 - Sheet1.csv")
+
+#adding columns of data that are converted from chr to numeric format to existing dataframe
+new_data_merged$need_not_get_20 = as.numeric(gsub('\\$|,', '', new_data_merged$Needed.Counseling.But.Did.Not.Get..2020.))
+
+new_data_merged$need_not_get_21 = as.numeric(gsub('\\$|,', '', new_data_merged$Needed.Counseling.But.Did.Not.Get..2021.))
+
+new_data_merged$did_not_need_or_get_20 = as.numeric(gsub('\\$|,', '', new_data_merged$Did.Not.Need.Counseling.And.Did.Not.Get..2020.))
+
+new_data_merged$did_not_need_or_get_21 = as.numeric(gsub('\\$|,', '', new_data_merged$Did.Not.Need.Counseling.And.Did.Not.Get..2021.))
+
+new_data_merged$did_not_report_20 = as.numeric(gsub('\\$|,', '', new_data_merged$Did.Not.Report..2020.))
+
+new_data_merged$did_not_report_21 = as.numeric(gsub('\\$|,', '', new_data_merged$Did.Not.Report..2021.))
+
+new_data_merged
+
+#subsetting relevant data from dataframe and assigning it to a new variable
+need_couns_not_get <- new_data_merged[c(2,9:10)]
+need_couns_not_get
+
+#converting dataframe from wide to long format (tidying data) and organizing data by income
+need_couns_not_get.long <- gather(need_couns_not_get, variable,value, -Income)
+
+need_couns_not_get.long
+
+#plot
+ggplot(data = need_couns_not_get.long, aes(x = fct_inorder(Income), y = value, fill = variable)) +
+  geom_col(position = position_dodge()) +
+  scale_x_discrete(labels = function(x) str_wrap(x, width = 10))+
+  theme(axis.text.x = element_text(angle = 90))+
+  ggtitle("Number of Individuals That Needed Therapy But Didn't Receive It Per Income Range")+
+  xlab("Income Ranges") + 
+  ylab("Number of Individuals") 
+
+#Below: Mean and St. Dev. values per variable per year across dataset
+
+#Need_not_get for 2020 and 2021
+
+mean(new_data_merged$need_not_get_20)
+sd(new_data_merged$need_not_get_20)
+
+mean(new_data_merged$need_not_get_21)
+sd(new_data_merged$need_not_get_21)
+
+#Didn't need and didn't get for 2020 and 2021
+
+mean(new_data_merged$did_not_need_or_get_20)
+sd(new_data_merged$did_not_need_or_get_20)
+
+mean(new_data_merged$did_not_need_or_get_21)
+sd(new_data_merged$did_not_need_or_get_21)
+
+#Didn't report for 2020 and 2021
+mean(new_data_merged$did_not_report_20)
+sd(new_data_merged$did_not_report_20)
+
+mean(new_data_merged$did_not_report_21)
+sd(new_data_merged$did_not_report_21)
+```
+
+```{r}
+#subsetting relevant data from dataframe and assigning it to a new variable
+didnotneed_didnotget <- new_data_merged[c(2, 11: 12)]
+didnotneed_didnotget
+
+#converting dataframe from wide to long format (tidying data) and organizing data by income
+didnotneed_didnotget.long <- gather(didnotneed_didnotget, variable,value, -Income)
+
+didnotneed_didnotget.long
+
+#plot
+ggplot(data = didnotneed_didnotget.long, aes(x = fct_inorder(Income), y = value, fill = variable)) +
+  geom_col(position = position_dodge()) +
+  scale_x_discrete(limits = c("Did not report","Less than $25,000","$25,000 - $34,999", "$35,000 - $49,999", "$50,000 - $74,999", "$75,000 - $99,999", "$100,000 - $149,999","$150,000 - $199,999","$200,000 and above")) +
+  scale_x_discrete(labels = function(x) str_wrap(x, width = 10))+
+  theme(axis.text.x = element_text(angle = 90))+
+  ggtitle("Number of Individuals That Didn't Need Therapy and Didn't Receive It Per Income Range")+
+  xlab("Income Ranges") + 
+  ylab("Number of Individuals") 
+```
+
+```{r}
+#subsetting relevant data from dataframe and assigning it to a new variable
+didnotreport <- new_data_merged[c(2, 13:14)]
+didnotreport
+
+#converting dataframe from wide to long format (tidying data) and organizing data by income
+didnotreport.long <- gather(didnotreport, variable,value, -Income)
+
+didnotreport.long
+
+#plot
+ggplot(data = didnotreport.long, aes(x = fct_inorder(Income), y = value, fill = variable)) +
+  geom_col(position = position_dodge()) +
+  scale_x_discrete(limits = c("Did not report","Less than $25,000","$25,000 - $34,999", "$35,000 - $49,999", "$50,000 - $74,999", "$75,000 - $99,999", "$100,000 - $149,999","$150,000 - $199,999","$200,000 and above")) +
+  scale_x_discrete(labels = function(x) str_wrap(x, width = 10))+
+  theme(axis.text.x = element_text(angle = 90))+
+  ggtitle("Number of Individuals That Did Not Report About Therapy")+
+  xlab("Income Ranges") + 
+  ylab("Number of Individuals") 
+```
+
+```{r}
+hist(c(new_data_merged$need_not_get_21), 
+       main="Histogram for Number of Individuals That Needed Therapy But Didn't Receive It Per Income Range", 
+       xlab="Number of Individuals")
+
+hist(c(new_data_merged$did_not_need_or_get_21), 
+       main="Number of Individuals That Didn't Need Therapy and Didn't Receive It Per Income Range", 
+       xlab="Number of Individuals")
+
+hist(c(new_data_merged$did_not_report_21), 
+       main="Histogram for Individuals That Didn't Report", 
+       xlab="Number of Individuals")
+
+```
+
+```{r}
+all_data_2020 <- new_data_merged[c(2, 9, 11, 13)]
+all_data_2020
+
+all_data_2020.long <- gather(all_data_2020, variable,value, -Income)
+
+all_data_2020.long
+
+ggplot(data = all_data_2020.long, aes(x = fct_inorder(Income), y = value, fill = variable)) +
+  geom_col(position = position_dodge()) +
+  scale_x_discrete(limits = c("Did not report","Less than $25,000","$25,000 - $34,999", "$35,000 - $49,999", "$50,000 - $74,999", "$75,000 - $99,999", "$100,000 - $149,999","$150,000 - $199,999","$200,000 and above")) +
+  scale_x_discrete(labels = function(x) str_wrap(x, width = 10))+
+  theme(axis.text.x = element_text(angle = 90))+
+  ggtitle("Composite Data 2020")+
+  xlab("Income Ranges") + 
+  ylab("Number of Individuals") 
+```
+
+```{r}
+all_data_2021 <- new_data_merged[c(2, 10, 12, 14)]
+all_data_2021
+
+all_data_2021.long <- gather(all_data_2021, variable,value, -Income)
+
+all_data_2021.long
+
+ggplot(data = all_data_2021.long, aes(x = fct_inorder(Income), y = value, fill = variable)) +
+  geom_col(position = position_dodge()) +
+  scale_x_discrete(limits = c("Did not report","Less than $25,000","$25,000 - $34,999", "$35,000 - $49,999", "$50,000 - $74,999", "$75,000 - $99,999", "$100,000 - $149,999","$150,000 - $199,999","$200,000 and above")) +
+  scale_x_discrete(labels = function(x) str_wrap(x, width = 10))+
+  theme(axis.text.x = element_text(angle = 90))+
+  ggtitle("Composite Data 2021")+
+  xlab("Income Ranges") + 
+  ylab("Number of Individuals") 
+```
+

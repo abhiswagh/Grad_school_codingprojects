@@ -1,0 +1,310 @@
+---
+title: "Exploring_Hurricane_Data_1"
+output: 
+  html_document:
+    toc: true
+---
+```{r include=FALSE}
+library(dplyr)
+library(ggplot2)
+```
+---
+# When do hurricanes happen?
+
+Team name: Gators byte
+
+Individual name: Abhi
+
+-----
+## Starting to explore tabular data
+
+Maybe you've already been there: You've managed to get an amazing dataset and are all pumped to start answering your questions.  But to do any of that, you've got to get a handle on the data structure and contents.  A fun and effective way to do that is to use some tools in R to preview parts of the data, and to make a few summary plots.  
+ In this RMarkdown , you'll start answering the question: When do hurricanes happen?
+
+## Managing tabular data using `"dplyr"`
+
+In this first module, you will have your first contact with tabular data (i.e. data arranged in rows and columns) which is the most common format in which data is handled for data analysis.
+
+In order to have a gentle introduction to R, we are going to use a data set that comes in one the most popular R packages for manipulation of tables: `"dplyr"`. The main reason to start in this mode, is to avoid having to worry about data importing issues, which we cover later in the course. The other reason is to have data that is already clean and ready to be analyzed.
+
+### Manipulating tables with `"dplyr"` framework
+
+In this module, you will start learning a couple of approaches to manipulate 
+tables and create basic statistical graphics. 
+
+- To manipulate tables, we are going to use the 
+functionality of the package `"dplyr"`. This package allows you to work with 
+tabular data _in a syntactic way_.
+
+- To create graphics in a fairly consistent and visually pleasant way 
+we are going to use the package `"ggplot2"`.
+The first thing you need to do is install `"dplyr"`and `"ggplot2"` in your computer. You can do this by installing under "Packages" on the right side window of RStudio, or typing "install.packages([packagename])" in the console. 
+
+Assuming that `"dplyr"` and `"ggplot2"` are already installed, the next thing
+to do is to __load__ them in your working session by invoking the `library()` 
+function.
+
+
+```{r}
+# (you should include this command in your source file at the very top like above)
+library(dplyr)
+library(ggplot2)
+```
+
+__About loading packages:__ Another rule to keep in mind is to always load any 
+required packages at the very top of your Rmarkdown or script files (`.R` or `.Rmd` or 
+`.Rnw` files). Avoid calling the `library()` function in the middle of a script. 
+Instead, load all the packages before anything else.
+
+Because packages `"dplyr"` and `"ggplot2"` have many functions, we recommend
+that you take a look at these cheatsheets:
+
+- dplyr cheatsheet: https://github.com/rstudio/cheatsheets/raw/master/data-transformation.pdf
+
+- ggplot2 cheathseet: https://rstudio.com/wp-content/uploads/2016/11/ggplot2-cheatsheet-2.1.pdf
+#these cheatsheets are old, check slack for updated ones
+-----
+
+## Atlantic Hurricane Data
+
+The package `"dplyr"` contains a dataset called `storms` 
+which is a subset of the _NOAA Atlantic hurricane database best track data_.
+This database is one of several data sets available in the National Hurricane 
+Center (NHC) Data Archive, which is part of the National Oceanic and Atmospheric 
+Administration (NOAA). In case you are curious about the specifications and 
+format of this type of data, outside of class you can visit the following link:
+
+<a href="http://www.nhc.noaa.gov/data/#hurdat" target="_blank">http://www.nhc.noaa.gov/data/#hurdat</a>
+
+The data `storms` includes the positions and attributes of 198 tropical storms, measured every six hours during the lifetime of a storm. These data are at your finger tips!  We're ultimately going to use these data to better understand how hurricanes behave, and how that has shifted with climate change. 
+
+### Assignment
+1. Let's start with a prediction: Do you think that hurricanes have occurred every year in recent history?  Provide a one-sentence explanation for your prediction.  (Note, your prediction does not have to be correct to get credit here)
+
+Prediction: We predict that hurricanes every year, because meteorologists talk about a hurricane season every year. 
+
+Now that your prediction is documented, let's get a preview of the data.  To do so, type the name of the data object, like this: 
+
+
+```{r}
+storms
+```
+
+
+What's going on in the above output?
+
+- `storms` is a __tibble__ object, which is one of the data objects in R that 
+handles data in tabular format. 
+
+- tibbles are not a native R object---they come from the homonym package 
+`"tibble"`---instead they are a modern version of data frames
+
+The way tibbles are _printed_ is very interesting. 
+
+- the number of rows that are displayed is limited to 10; 
+
+- depending on the width of the printing space, you will only see a few columns 
+shown to fit such width. 
+
+- underneath the name of each column there is a three letter abbreviation 
+inside angle brackets
+
+- this abbreviation indicates the _data type_ used by R to store the values. For 
+  + `<chr>` stands for _character_ data
+  + `<dbl>` means _double_ (i.e. real numbers or numbers with decimal digits)
+  + `<int>` means _integer_ (numbers with no decimal digits)
+  + `<ord>` indicates an _ordinal_ `factor` which is how R handles categorical
+  data
+
+Just looking at this preview can get you an idea about type of data you're looking at.  You can find a more technical description of `storms` by taking a peek at its manual (or help) documentation. All you need to do is run these commands:
+
+
+```{r}
+storms
+```
+
+
+```{r}
+str(storms)
+```
+
+### Assignment
+2. Which variable in `storms` describes the Saffir-Simpson storm classification for each storm at each time point?  
+
+'Status'
+-----
+
+## Exploratory Data Analysis
+
+Exploring data is very similar to when you go to the doctor and they do an 
+initial exploration (e.g. measuring your height, your weight, temperature, 
+blood pressure; listening to your heart and lungs; looking at your eyes, 
+throat, ears; asking you questions about your eating habits, physical activity 
+habits, etc).
+
+To perform an exploratory analysis of data that is tabular format, we typically
+start by inspecting each variable (each column) at a time.
+To keep things relatively simple, we won't perform a full exploration of every 
+single variable in the data. However, we encourage you to play with the 
+functions to go beyond what we cover in this module. In real life, you will 
+have to do such exploration.
+
+### Basic Inspection of `year`
+
+ When you type `storms`, R displays the first 10 rows, which belong to storm Amy in 1975:
+
+```{r}
+storms
+```
+
+From this output, we know that the data contains at least one storm from 1975. 
+
+We also know, from the manual documentation of `storms`, that there 
+are supposed to be 198 storms. But we don't know for what years. So let's begin inspecting `storms` by focusing on column 
+`year`. Our first exploratory question is: 
+
+> __For what years do we have hurricane data?__
+
+There are several ways in R to manipulate a column from a tabular object. Using 
+`"dplyr"`, there are two basic kinds of functions to extract variables: 
+`pull()` and `select()`.
+
+```{r fig.cap='Extracting a column with dplyr functions "pull" and "select"', echo = FALSE, out.width='65%'}
+knitr::include_graphics("https://www.gastonsanchez.com/intro2cwd/images/eda/dplyr-extract-column.svg")
+```
+
+Let's do a sanity check of years. We can use the function `pull()` that _pulls_
+or extracts an entire column. Because there are 10010 elements in 
+`years`, let's also use `unique()` to find out the set of year values in the
+data. First we pull the year, and then we identify unique occurrences:
+
+
+```{r}
+unique(pull(storms, year))
+```
+
+The same can be accomplished with `select()`. The difference with `pull()` is 
+in the way the output is handled by `select()`, which returns output in a table
+format:
+
+
+```{r}
+unique(select(storms, year))
+```
+
+
+### Assignment
+3. Based on the data here, was your answer in question 1 correct?  Provide a one-sentence explanation. 
+
+Yes, based on the output table, there are consecutive years listed for storms.
+
+4. Now, do you think the hurricanes are evenly distributed across those years, or are some years more likely to have more hurricanes?  Again, give a one-sentence explanation.  (And again, your guess here does not have to be correct)
+
+I think ther are some years more likely to have a hurricane as opposed to others, due to the water currents along the west coast of Africa. (El Nino La Nina)
+
+### Barplot of `year` values
+
+Let's keep using the values in column `year` to obtain our first visualization 
+with `"ggplot2"` functions. You could certainly begin a visual exploration of 
+other variables, but we think `year` is a good place to start because it's a 
+numeric variable, measured on a discrete scale, and this is a good candidate 
+to use barcharts (the most popular type of graphic).
+
+`"ggplot2"` comes with a large number of functions to create almost any 
+type of chart. Luckily for us, it already comes with predefined
+functions to graph barcharts. The syntax may seem a bit scary for beginners, 
+but you will see that it follows a logical structure. Here's the code to make
+a barplot of values in `year`:
+
+
+```{r}
+# barchart of year values
+ggplot(data = storms) + 
+  geom_bar(aes(x = year))
+```
+
+How does the previous command work? 
+
+- First, we always call the `ggplot()` function, typically indicating the name 
+of the table to be used with the `data` argument. 
+
+- Then, we add more components, or __layers__, using the plus `+` operator. 
+
+- In this case we are adding just one layer: a `geom_bar()` component which is 
+the geometric object for bars. 
+
+- To tell `ggplot()` that `year` is the column in `data = storms` to be used for
+the x-axis, we __map__ `x = year` inside the `aes()` function which stands for 
+_aesthetic_ mapping. 
+
+We should clarify that the meaning of "aesthetic" as used by `"ggplot2"` does 
+not mean beautiful or pretty, instead it conserves its etymological
+meaning of _perception_. Simply put, `aes()` is the function that you use to 
+tell `ggplot()` which variables of a `data` object will be mapped as visual
+attributes of graphical elements.
+
+
+
+### Assignment
+
+Let's use similar tools to understand if hurricanes are more likely in a particular month.  
+
+5. Guess if hurricanes are evenly distributed through the calendar year, or if they're more common in some months.  
+
+They're likely more common in some months, probably the summer.
+
+6. Using the techniques above (`pull()`, `select()`, and `unique()`), inspect the values present in the column `month`. 
+
+```{r}
+unique(select(storms, month))
+```
+
+7. Use `sort()` in order to arrange the unique values of `month`.
+
+```{r}
+sort(unique(pull(storms, month)))
+```
+
+8. Are there months for which there seem to be no recorded storm data? Does that mean there's a problem with how we're handling the data, or is that expected?  Explain.
+
+Yes, there are months with no recorded storm data. Not necessarily a problem with how we're handling data, but rather just how climate patterns were that year. 
+
+9. Use `"ggplot2"` functions to graph a barchart for the values in column `month`.
+
+```{r}
+ggplot(data = storms) + 
+  geom_bar(aes(x = month))
+```
+
+10. Does the plot make sense, or do you think there's a problem with how we're handling the data? Why?
+
+I think the plot makes sense, because it's a plot of the total number of storms per month as recorded over the 40 years this dataset spans.
+
+11. Now let's personalize your plot.  Look at the cheatsheet for ggplot and locate the information for `geom_bar()`. Find out how to specify: border `color`, `fill` color. Also, see what happens when you specify `alpha = 0.5`.
+
+alpha=0.5 makes the plot fill color lighter
+
+```{r}
+ggplot(data=storms, (aes(x=month))) +
+  geom_bar(color="blue", fill="purple", alpha=0.5)
+```
+
+12. Look at the cheatsheet for ggplot and locate the information for background _Themes_, e.g. `theme_bw()`. Find out how to add theme `theme_classic()` to the previous barchart.
+
+```{r}
+ggplot(data=storms, (aes(x=month))) +
+  geom_bar(color="blue", fill="purple", alpha=0.5)+
+  theme_classic()
+```
+
+13. Let's document your plot too.  Look at the cheatsheet for ggplot and locate the information for _Labels_. Find out how to add a title with `ggtitle()` as well as with `labs()` to one of your previous barcharts.
+
+
+```{r}
+ggplot(data=storms, (aes(x=month))) +
+  geom_bar(color="blue", fill="purple", alpha=0.5)+
+  theme_classic()+
+  ggtitle("Number of Hurricanes Per Month from 1975-2015")+
+  labs(x="Month", y= "Number of hurricanes")
+```
+

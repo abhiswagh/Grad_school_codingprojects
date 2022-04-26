@@ -1,0 +1,327 @@
+---
+title: "Estuaries Climate Change Module 1 Project"
+output: html_notebook
+---
+
+# Module 1 Project - Analyzing pCO$_2$ in Estuaries
+
+In the Introduction to Ocean Acidification from Anthropogenic CO$_2$, we saw the relationship between pH and dissolved carbon dioxide near Hawaii. These samples were taking from open ocean and the data that you downloaded was pre-cleaned. We noted that the oscillations in the data are due to the seasonal changes that happen every year. 
+
+In your project for Module 1, you will look at data from estuaries, rather than open ocean. In estuaries, the pCO2 and thus the pH are affected by more factors than just seasonal changes in temperature. We will explore the trends in pCO$_2$ variation over the year and how these trends depend on the specific estuary. 
+
+### Data Provenance
+Professor Karina Nielsen from SFSU and Dr. Curtis Bohlen, Director of the Casco Bay Estuaries Partnership, generously have provided their data, example analyses, and concept for this module's project.  We are grateful that they have shared their unpublished data with us!
+
+### Background
+Professor Nielsen took data from San Francisco Bay and provided us with a draft of the paper she and her collaborators have written.
+
+"The objective of this paper is to describe and compare coastal acidification data from seven coastal systems around the United States in terms of typical values (i.e., median, range, etc..) seasonality, and co-variability to begin to understand natural variability in carbonate chemistry parameters within, and across a range of environmental settings."
+
+You will probably not have time to finish the manuscript in class, but will use it as a reference.
+
+### Research Question
+There are MANY plots included in the manuscript. In addition, Dr Curtis Bohlen has let me know that many more analyses and plots were generated, that were later not included! (It is common to try many analyses until one gives the clearest picture of the story you are trying to tell.)
+
+Your goal is to create plots to support or refute two of the claims that are taken directly from the manuscript:
+
+### Claim 1
+"Results of year to multiyear monitoring across all water bodies show that temperature and pCO2 covaried and were lower in cooler, winter months and higher in warmer summer months, suggesting that part of the annual change in pCO2 was governed by seasonal temperature changes."
+
+### Claim 2
+"Specifically, pCO2 increase began earlier in the year in warmer water, lower latitude GOM water bodies (Tampa Bay; Mission-Aransas Estuary) as compared with cooler water, higher latitude water bodies in the northeast (Barnegat Bay; Casco Bay) and upwelling-influenced west coast water bodies (Tillamook Bay, Santa Monica Bay; San Francisco Bay). Conversely, non-thermal processes, most notably the biogeochemical structure of coastal upwelling, appear to be largely responsible for the observed pCO2 values in west coast water bodies (Santa Monica Bay, San Francisco Bay and Tillamook Bay)." --> Temperature and CO2 are LESS correlated in West Coast estuaries.
+
+#compare Golf of Mexico location data vs. east or west coast data
+#plot CO2 vs.time,do it for multiple locations
+
+You plots may look similar to some of the plots in the manuscript. We will provide the code to help you with data wrangling and suggest plots that will help you investigate the above claims.
+
+Instructions for your analyses and the requirements for your Report are given at the bottom of this notebook.
+
+```{r}
+#install.packages("tidyverse") You may need to install some packages
+
+library(tidyverse)
+library(readxl)
+library(ggplot2)
+```
+
+#### Loading data
+```{r}
+all_data <- read_excel("Data_6.12.2020_v2_REG_DELIVER.xlsx", sheet = "Data_6.12.2020_v2_REG_DELIVER",
+                       col_types = c("text", "text", "date", 
+                       "skip", "numeric", "numeric", "numeric", 
+                       "numeric", "numeric", "numeric", 
+                       "skip", "skip", "skip", "skip", "skip"))
+```
+
+I removed the "Season" column and changed the name of some data based on Curtis's suggestion.
+```{r}
+all_dataM <- all_data %>%
+  rename_at(vars(contains('_meas')), list(~str_replace(., '_meas',''))) %>%
+  rename(CO2Corr = CO2_Tcorr12) %>%
+  select(-Season)
+```
+
+In the manuscript, sometimes the data from all the water bodies are shown together. Othertimes just one water body is analyzed/plotted. We are going to start by looking at just one or two water bodies. Thus we must extract that data and save it to a new dataframe. Below, I show the abbreviations given to the different water body measurements. Make sure you can match each water body from the manuscript to its abbreviation.
+
+```{r}
+unique(all_dataM$WaterBody)
+```
+
+Example with Santa Monica Bay measurements at 15 meters.
+Below is the code to extract just the data from the Santa Monica Bay taken at 15 meters depth. Statistical analyses are performed in the same code block.
+
+Important points and syntax to note:
+
+I gave the data subset the name SMB15daily_data. You will copyd and edit this code to look at 1-2 other water bodies, so please rename your subset appropriately.
+
+I use the function called filter to extract only the data labeled with SMB_15. How will you extract data from another water body?
+
+In this data wrangling code, Curtis uses an 'advanced' technique called piping. A pipe is indicated by  %>%  and allows the output of one function to be passed along as input into another function.
+
+Finally, note where Curtis does the statistical analyses in the block summarise_at. For all the measurements (temperature, salinity, pCO2, corrected pCO2, pH, and dissolved oxygen) the sum, median, range, and 95th quantile are calculated. Find where he notes what the function summarise_at does.
+
+```{r}
+# Wrangling to get box plots from all estuaries
+SMB15daily_data <- all_dataM %>%
+  filter(WaterBody == 'SMB_15') %>%
+  # first, create a variable that is JUST the date.
+  mutate(theDate = as.Date(DateTime)) %>%
+  select(-DateTime) %>%
+  group_by(theDate) %>%
+  # by default, summarize_at creates new variable names like "CO2_n" and "CO2_r"
+  # that's why I used short variable names here.
+  summarise_at(c("Temp", "Sal", "CO2", "CO2Corr", "pH","DO"),
+               c(n     = function(x) sum(! is.na(x)),
+                 m    = function(x) median(x, na.rm=TRUE),
+                 r    = function(x) {suppressWarnings(max(x, na.rm=TRUE) -
+                                                        min(x, na.rm=TRUE))},
+                #iqr   = function(x) IQR(x, na.rm=TRUE),
+                p90r  = function(x) {as.numeric(quantile(x, 0.95, na.rm=TRUE) -
+                        quantile(x, 0.05, na.rm=TRUE))})) %>%
+  
+  # Finally, I create year and month labels
+  mutate(yyyy = as.numeric(format(theDate, format = '%Y')),
+         dd   = as.numeric(format(theDate, format = '%d')),
+         doy  = as.numeric(format(theDate, format = '%j')),
+         mm   = as.numeric(format(theDate, format = '%m')),
+         Month = factor(mm, levels=1:12, labels = month.abb)
+         )
+
+# Wrangling to get box plots from all estuaries
+CBdaily_data <- all_dataM %>%
+  filter(WaterBody == 'CB') %>%
+  # first, create a variable that is JUST the date.
+  mutate(theDate = as.Date(DateTime)) %>%
+  select(-DateTime) %>%
+  group_by(theDate) %>%
+  # by default, summarize_at creates new variable names like "CO2_n" and "CO2_r"
+  # that's why I used short variable names here.
+  summarise_at(c("Temp", "Sal", "CO2", "CO2Corr", "pH","DO"),
+               c(n     = function(x) sum(! is.na(x)),
+                 m    = function(x) median(x, na.rm=TRUE),
+                 r    = function(x) {suppressWarnings(max(x, na.rm=TRUE) -
+                                                        min(x, na.rm=TRUE))},
+                #iqr   = function(x) IQR(x, na.rm=TRUE),
+                p90r  = function(x) {as.numeric(quantile(x, 0.95, na.rm=TRUE) -
+                        quantile(x, 0.05, na.rm=TRUE))})) %>%
+  
+  # Finally, I create year and month labels
+  mutate(yyyy = as.numeric(format(theDate, format = '%Y')),
+         dd   = as.numeric(format(theDate, format = '%d')),
+         doy  = as.numeric(format(theDate, format = '%j')),
+         mm   = as.numeric(format(theDate, format = '%m')),
+         Month = factor(mm, levels=1:12, labels = month.abb)
+         )
+```
+```
+
+```{r}
+#After doing analyses, it is good practice to view some of the data to make sure it came out as expected. The first time I (Nicole) tried Curtis's code, my data came out blank and I had to fix a typo!
+
+#Now all the measurements have a daily mean, range, ect. In the manuscript, some plots show the seasonal means. After you get more familiar with data wrangling, you could figure out how to changed the code to group_by Season rather than the Date!
+```{r}
+head(SMB15daily_data,10)
+```
+### Examples of plots
+
+#### Claim 1 - Relationship between pCO2 and temperature by Month
+
+We suggest using a boxplot to show that pCO2 is lower cooler winter months for your given water body. This plot will help you investigate claim 1. 
+
+We will give you an example to visualize the temperature measurements taken from each month. You can edit this example to show the pCO2. 
+
+While you could simply plot the mean temperature from each month, it's more interesting to show more information using a boxplot. We will use the ggplot geom_boxplot function. 
+
+Recall that aes stands for aesthetic and is a way to assign (or map) data onto a variable. In this case, aes maps Month onto the x axis. 
+
+Also remember that I am showing you data from Santa Monica Bay (SMB15)
+
+```{r}
+#Example plot (ignore warnings if plot shows up)
+ggplot(SMB15daily_data, aes(x=Month)) +
+ geom_boxplot(aes(y= CO2_m)) +
+ xlab('Month') + 
+ ylab(expression(atop("pCO2", CO2 (C)))) +
+ ggtitle("Daily Temperature in Santa Monica Bay at 15 meters")
+```
+
+
+As expected, temperature is higher in the summer months! In addition, the range of temperatures measured is larger as the mean temperature increases. Another way to show the positive correlation between range and median is using a scatter plot. The code below includes a trend line using the syntax geom_smooth, which uses a Loess smoother. If you are curious, you can read about a Loess smoother and other trend lines available in R.
+
+In your report, you will use geom_boxplot and the wrangled data above show the range of CO2 for every Month.
+
+Some syntax to note in the code below:
+
+In the y-axis label some fancy formatting is done to enable the Greek letter  𝜇 , which stands for micro.
+
+No additional information is given in the geom_point function, but you could use aes to map a different color to each month.
+
+Look up the syntax for that mapping in the geom_point function and see if you can edit the code below!
+
+```{r}
+ggplot(SMB15daily_data, aes(x =Temp_m, y=CO2_m, color= Month)) + geom_point() + 
+ geom_smooth(se=FALSE) +
+ xlab("Temperature") + 
+ ylab(expression(atop("Diurnal Range", pCO[2]~(~mu~Atm))))+
+   ggtitle("PCO2 vs. Temperature in SM Bay")
+```
+#### Claim 2 - Temperature and pCO$_2$ are less correlated in West Coast water bodies. 
+
+In claim 2, the goal is to compare West Coast water bodies to East Coast water bodies. To start, you will pick ONE West Coast estuary and ONE East Coast estuary. Then plot pCO$_2$ versus temperature in a scatterplot (map Month to color for improved visualization).
+
+It would be nice to plot analyses of the two different water bodies SIDE by SIDE, which can be done using **facet_wrap**!
+
+You will look up facet_wrap with your team and implement it in your report. One hint: the argument of facet_wrap has to be ~WaterBody, so that the plots are separated by the different estuaries. 
+
+In order to use facet_wrap, you need to create a data frame that contains data from BOTH water bodies. The code for that wrangling is below. I am going to compare the Santa Monica Bay data at 15 versus 60 meters, but you are going to compare two different estuaries. 
+
+Note
+
+1. I **group_by** WaterBody and theDate. 
+
+2. I use the syntax <code> | </code>, which is the **OR** operator. I  filter for data assigned to the water body SMB_15 OR SMB_60.
+
+```{r}
+head(all_estu,10)
+```
+
+Here is how the facet wrap works for the two different depths in Santa Monica
+
+
+You can also use facet wrap and ggplot to see how thw temperature changes by month for the two different depths. Some of the code you can use for that is ggplot(compare_daily_data, aes(x = Month)) + 
+ geom_boxplot(aes(y= Temp_r)) 
+
+That's the end of the examples and hints from this notebook. Please ask for advice and more hints if you get stuck while working with your team!
+
+
+## Report
+
+Work together with your team to complete your report. 
+
+Team name: Gators Byte
+Team member names: Andre's, Jocelyne, Amayrani, Abhi
+
+The requirements for completing your Report are to to support or refute two claims from the manuscript, restated here:
+
+1. "Results of year to multiyear monitoring across all water bodies show that temperature and pCO2 covaried and were lower in cooler, winter months and higher in warmer summer months, suggesting that part of the annual change in pCO2 was governed by seasonal temperature changes."
+
+```{r}
+# Wrangling to get box plots from all estuaries
+all_estu <- all_dataM %>%
+  # first, create a variable that is JUST the date.
+  mutate(theDate = as.Date(DateTime)) %>%
+  select(-DateTime) %>%
+  group_by(theDate) %>%
+  # by default, summarize_at creates new variable names like "CO2_n" and "CO2_r"
+  # that's why I used short variable names here.
+  summarise_at(c("Temp", "Sal", "CO2", "CO2Corr", "pH","DO"),
+               c(n     = function(x) sum(! is.na(x)),
+                 m    = function(x) median(x, na.rm=TRUE),
+                 r    = function(x) {suppressWarnings(max(x, na.rm=TRUE) -
+                                                        min(x, na.rm=TRUE))},
+                #iqr   = function(x) IQR(x, na.rm=TRUE),
+                p90r  = function(x) {as.numeric(quantile(x, 0.95, na.rm=TRUE) -
+                        quantile(x, 0.05, na.rm=TRUE))})) %>%
+  
+  # Finally, I create year and month labels
+  mutate(yyyy = as.numeric(format(theDate, format = '%Y')),
+         dd   = as.numeric(format(theDate, format = '%d')),
+         doy  = as.numeric(format(theDate, format = '%j')),
+         mm   = as.numeric(format(theDate, format = '%m')),
+         Month = factor(mm, levels=1:12, labels = month.abb)
+         )
+```
+
+```{r}
+ggplot(all_estu, aes(x = Temp_m, y=CO2_m, color = Month)) + geom_point() +
+geom_smooth(se=FALSE) +
+xlab("Temperature") + 
+ylab("pCO2")+
+  ggtitle("All Estuary Data, PCO2 vs. Temperature")
+```
+
+
+2. "Specifically, pCO2 increase began earlier in the year in warmer water, lower latitude GOM water bodies (Tampa Bay; Mission-Aransas Estuary) as compared with cooler water, higher latitude water bodies in the northeast (Barnegat Bay; Casco Bay) and upwelling-influenced west coast water bodies (Tillamook Bay, Santa Monica Bay; San Francisco Bay). Conversely, non-thermal processes, most notably the biogeochemical structure of coastal upwelling, appear to be largely responsible for the observed pCO2 values in west coast water bodies (Santa Monica Bay, San Francisco Bay and Tillamook Bay)."  --> Temperature and CO2 are LESS correlated in West Coast estuataries.
+
+Pick ONE estuary from the East Coast and ONE estuary from the West Coast to compare. 
+
+```{r}
+# Wrangling to get box plots from TWO estuaries
+compare_data <- all_dataM %>%
+  filter(WaterBody == 'SFB_1' | WaterBody == 'CB' ) %>%
+  # first, create a variable that is JUST the date.
+  mutate(theDate = as.Date(DateTime)) %>%
+  select(-DateTime) %>%
+  group_by(WaterBody, theDate) %>%
+  
+  # by default, summarize_at creates new variable names like "CO2_n" and "CO2_r"
+  # that's why I used short variable names here.
+  summarise_at(c("Temp", "Sal", "CO2", "CO2Corr", "pH","DO"),
+               c(n     = function(x) sum(! is.na(x)),
+                 m    = function(x) median(x, na.rm=TRUE),
+                 r    = function(x) {suppressWarnings(max(x, na.rm=TRUE) -
+                                                        min(x, na.rm=TRUE))},
+                #iqr   = function(x) IQR(x, na.rm=TRUE),
+                p90r  = function(x) {as.numeric(quantile(x, 0.95, na.rm=TRUE) -
+                        quantile(x, 0.05, na.rm=TRUE))})) %>%
+  
+  # Finally, I create year and month labels
+  mutate(yyyy = as.numeric(format(theDate, format = '%Y')),
+         dd   = as.numeric(format(theDate, format = '%d')),
+         doy  = as.numeric(format(theDate, format = '%j')),
+         mm   = as.numeric(format(theDate, format = '%m')),
+         Month = factor(mm, levels=1:12, labels = month.abb)
+         )
+```
+
+```{r}
+#compare SFB_1 and CB
+ggplot(compare_data, aes(x = Temp_m, y=CO2_m)) + 
+ geom_point(aes(color = Month)) + 
+ geom_smooth(se=FALSE) +
+ xlab("Temperature") + 
+ ylab(expression(atop("Daily Median pCO2", pCO[2]~(~mu~Atm)))) +
+ facet_wrap(~WaterBody, ncol=2)+
+  ggtitle("SF Bay and Casco Bay Data, pCO2 vs. Temperature")
+```
+
+
+Create plots and write some paragraphs describing how the plots support or refute the claims. 
+
+Given time, you could TRY comparing various estuaries and then select TWO to present in your report. 
+
+You could also include plots of ALL the estuaries using all_dataM and facet_wrap. However, it is easier to start by explaining the differences between TWO plots than summarizing the trends amoung all the estuaries. 
+
+Include two separate sections of your report, one for each claim. You can write your report here (below all the examples). Or you can create a separate notebook for report. If you have a separate report, make sure your Report can be "run", so includes all the necessary code and libraries to import and wrangle the data.
+
+If you wish to include other interesting results from your analyses, please do and describe what you found!
+
+Include an Introduction in your Report. Describe the motivation and goal of the analyses and which two estuaries that you chose to compare.
+
+#Written Report
+The paper was exploring the effects of increasing climate change on oceans, and it measured these effects by using parameters, such as pH and pCO2. Ocean acidification occurs due to more CO2 being in the air. The 2 main claims we looked at from this paper were about how pCO2 fluctuations over time for all 7 estuaries studied were partially tied to seasonal changes and that temperature is less correlated with pCO2 levels for west coast estuaries compared to east coast ones. Overall, we found that the given data supported both claims only partially and not enough to fully substantiate each claim. Therefore, we believe the data doesn’t support either claim.
+
+For Claim 1, the graph that shows data for pCO2 vs. temperature for all estuaries shows some correlation between temperature and pCO2. For example, in warmer weather, pCO2 increases for the most part. However, the trendlines for September and October are not correlated at all. This graph includes all estuaries’ data, which means that the bays that show little to no correlation such as SFB_1 will skew the data. It seems like the researchers may have been making absolute statements based on data points from certain months, such as April, May, and June that showed a direct relationship between pCO2 and temperature.
+
+For Claim 2, the graph comparing pCO2 vs. temperature data shows that the west coast bay (San Francisco Bay) shows less correlation between those 2 variables. This can be seen by curve in the graph. For Casco Bay, the east coast bay we chose, there appears to be an overall positive correlation. As temperature increases, CO2 increases. Although we can’t illustrate that warmer water/lower latitude bays have a pCO2 increase earlier in the year, our data demonstrates that cooler water/higher latitude bays have lower CO2 levels at lower temperatures. Furthermore, Casco Bay has a high positive correlation between pCO2 and temperature. However, the San Francisco Bay doesn’t have a high positive correlation between these variables to support the claim. For example, the CO2 levels for SF Bay fluctuate nonlinearly throughout the year. We hypothesize the reason for this is, because San Francisco weather doesn’t follow traditional weather patterns of hot weather in the summer and cold weather in the winter. The Northeast experiences 4 seasons throughout the year, so we chose Casco Bay for that reason.
